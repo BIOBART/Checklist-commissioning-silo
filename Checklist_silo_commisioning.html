@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist App</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: #E2DDD5;
+    --border-strong: #C8C2B8;
+    --text: #1A1714;
+    --text-muted: #7A7168;
+    --text-light: #B0A898;
+    --accent: #2D5A3D;
+    --accent-light: #E8F0EB;
+    --accent-mid: #4A8A5E;
+    --danger: #C0392B;
+    --warning: #D4860A;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .badge-saved {
+    font-size: 12px;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge-saved::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-mid);
+    display: inline-block;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .btn:hover { background: var(--surface2); border-color: var(--border-strong); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #234830; border-color: #234830; }
+  .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
+
+  /* ── FORM META ── */
+  .form-meta {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .form-title-input {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--text);
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    letter-spacing: -0.3px;
+  }
+  .form-title-input::placeholder { color: var(--text-light); }
+  .form-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .form-subtitle span { display: flex; align-items: center; gap: 4px; }
+  .date-input {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text-muted);
+    border: none;
+    outline: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; }
+  .sep { color: var(--border-strong); }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .progress-track { height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+
+  /* ── SECTION ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .section-head {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--accent-light);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-icon svg { width: 15px; height: 15px; color: var(--accent); }
+  .section-title {
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+  }
+  .section-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  /* ── CHECKLIST ITEMS ── */
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 1.25rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: #FDFCFA; }
+
+  .checkbox {
+    width: 20px; height: 20px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border-strong);
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    background: var(--surface);
+  }
+  .checkbox:hover { border-color: var(--accent); }
+  .checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox.checked svg { display: block; }
+  .checkbox svg { display: none; width: 11px; height: 11px; color: white; }
+
+  .item-body { flex: 1; min-width: 0; }
+  .item-label {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    transition: color 0.15s;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .item-label.done {
+    color: var(--text-light);
+    text-decoration: line-through;
+    text-decoration-color: var(--border-strong);
+  }
+  .item-hint { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+  /* ── FORM FIELDS ── */
+  .field-wrap { margin-top: 8px; }
+  textarea.field, input.field, select.field {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+  textarea.field:focus, input.field:focus, select.field:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+  textarea.field { min-height: 64px; }
+  .radio-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .radio-opt {
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    background: var(--surface);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .radio-opt:hover { border-color: var(--accent); color: var(--accent); }
+  .radio-opt.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  /* ── ADD SECTION / ITEM ── */
+  .add-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 1.25rem;
+    border-top: 1px dashed var(--border);
+  }
+  .add-btn {
+    font-size: 13px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+    transition: color 0.15s;
+  }
+  .add-btn:hover { color: var(--accent); }
+  .add-btn svg { width: 14px; height: 14px; }
+
+  .add-section-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 1rem;
+  }
+  .add-section-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+  /* ── PDF PREVIEW OVERLAY ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 1rem;
+  }
+  .modal-field { margin-bottom: 1rem; }
+  .modal-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+  .modal-input {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  .modal-input:focus { border-color: var(--accent); background: var(--surface); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    header { padding: 0 1rem; }
+    .container { padding: 1rem 0.75rem 5rem; }
+    .logo { font-size: 17px; }
+    .btn span { display: none; }
+    .badge-saved span { display: none; }
+  }
+
+  /* ── PRINT STYLES (voor browser print als fallback) ── */
+  @media print {
+    header, .add-section-btn, .add-row, .header-actions { display: none !important; }
+    .section { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Checklist
+  </div>
+  <div class="header-actions">
+    <div class="badge-saved" id="save-badge">
+      <span>Opgeslagen</span>
+    </div>
+    <button class="btn" onclick="openPdfModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Exporteer PDF</span>
+    </button>
+  </div>
+</header>
+
+<div class="container" id="main-container">
+
+  <!-- Form meta -->
+  <div class="form-meta">
+    <input class="form-title-input" id="form-title" type="text" placeholder="Naam van de checklist…" value="Inspectie Q2 2025" oninput="saveData()">
+    <div class="form-subtitle">
+      <span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <input class="date-input" type="date" id="form-date" oninput="saveData()" aria-label="Datum">
+      </span>
+      <span class="sep">·</span>
+      <span id="meta-count">0 van 0 items aangevinkt</span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span>Voortgang</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Sections rendered here -->
+  <div id="sections-wrap"></div>
+
+  <button class="add-section-btn" onclick="addSection()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nieuwe sectie toevoegen
+  </button>
+
+</div>
+
+<!-- PDF modal -->
+<div class="overlay" id="pdf-overlay">
+  <div class="modal">
+    <h2>Exporteer als PDF</h2>
+    <div class="modal-field">
+      <div class="modal-label">Opgesteld door</div>
+      <input class="modal-input" id="pdf-author" type="text" placeholder="Naam inspecteur…">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Organisatie / bedrijf</div>
+      <input class="modal-input" id="pdf-org" type="text" placeholder="Bedrijfsnaam…">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Opmerkingen</div>
+      <input class="modal-input" id="pdf-notes" type="text" placeholder="Optionele opmerking op PDF…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePdfModal()">Annuleer</button>
+      <button class="btn btn-primary" onclick="generatePDF()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA MODEL ──
+let data = {
+  title: 'Inspectie Q2 2025',
+  date: '',
+  sections: [
+    {
+      id: 's1', title: 'Sectie A — Algemeen',
+      items: [
+        { id: 'i1', label: 'Locatie geïnspecteerd', hint: 'Verplicht punt', checked: true, type: 'check' },
+        { id: 'i2', label: 'Verantwoordelijke aanwezig', hint: '', checked: true, type: 'check' },
+        { id: 'i3', label: 'Bijkomende opmerkingen', hint: '', checked: false, type: 'text', value: '' }
+      ]
+    },
+    {
+      id: 's2', title: 'Sectie B — Veiligheid',
+      items: [
+        { id: 'i4', label: 'Nooduitgangen vrij', hint: '', checked: false, type: 'check' },
+        { id: 'i5', label: 'Brandblussers gecontroleerd', hint: 'Vervaldatum controleren', checked: false, type: 'check' },
+        { id: 'i6', label: 'Risicobeoordeling', hint: '', checked: false, type: 'radio', options: ['Laag', 'Medium', 'Hoog'], value: '' }
+      ]
+    },
+    {
+      id: 's3', title: 'Sectie C — Afsluiting',
+      items: [
+        { id: 'i7', label: 'Rapport ondertekend', hint: '', checked: false, type: 'check' },
+        { id: 'i8', label: 'Verzonden naar verantwoordelijke', hint: '', checked: false, type: 'check' }
+      ]
+    }
+  ]
+};
+
+let saveTimer = null;
+
+// ── LOAD / SAVE (localStorage) ──
+function loadData() {
+  const raw = localStorage.getItem('checklist_v1');
+  if (raw) {
+    try { data = JSON.parse(raw); } catch(e) {}
+  }
+  document.getElementById('form-title').value = data.title || '';
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('form-date').value = data.date || today;
+  if (!data.date) data.date = today;
+}
+
+function saveData() {
+  data.title = document.getElementById('form-title').value;
+  data.date = document.getElementById('form-date').value;
+  localStorage.setItem('checklist_v1', JSON.stringify(data));
+  const badge = document.getElementById('save-badge');
+  badge.style.color = 'var(--accent)';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { badge.style.color = ''; }, 1500);
+  updateProgress();
+}
+
+// ── IDs ──
+let idCounter = 100;
+function uid() { return 'x' + (++idCounter); }
+
+// ── RENDER ──
+function render() {
+  const wrap = document.getElementById('sections-wrap');
+  wrap.innerHTML = '';
+  data.sections.forEach(sec => {
+    wrap.appendChild(renderSection(sec));
+  });
+  updateProgress();
+}
+
+const ICONS = {
+  default: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+};
+
+function renderSection(sec) {
+  const el = document.createElement('div');
+  el.className = 'section';
+  el.dataset.id = sec.id;
+
+  const checkedCount = sec.items.filter(i => i.checked).length;
+
+  el.innerHTML = `
+    <div class="section-head">
+      <div class="section-icon">${ICONS.default}</div>
+      <input class="section-title" style="border:none;outline:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;flex:1;"
+        value="${escHtml(sec.title)}" placeholder="Sectietitel…"
+        oninput="updateSectionTitle('${sec.id}', this.value)">
+      <span class="section-count">${checkedCount}/${sec.items.length}</span>
+      <button onclick="deleteSection('${sec.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;margin-left:4px;" title="Sectie verwijderen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+    </div>
+    <div class="items-wrap" id="items-${sec.id}"></div>
+    <div class="add-row">
+      <button class="add-btn" onclick="addItem('${sec.id}', 'check')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Vinkpunt
+      </button>
+      <button class="add-btn" onclick="addItem('${sec.id}', 'text')" style="margin-left:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tekstveld
+      </button>
+      <button class="add-btn" onclick="addItem('${sec.id}', 'radio')" style="margin-left:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Keuze
+      </button>
+    </div>
+  `;
+
+  const itemsWrap = el.querySelector(`#items-${sec.id}`);
+  sec.items.forEach(item => {
+    itemsWrap.appendChild(renderItem(sec.id, item));
+  });
+
+  return el;
+}
+
+function renderItem(secId, item) {
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.dataset.id = item.id;
+
+  let fieldHtml = '';
+  if (item.type === 'text') {
+    fieldHtml = `<div class="field-wrap">
+      <textarea class="field" placeholder="Typ hier…" oninput="updateItemValue('${secId}','${item.id}',this.value)">${escHtml(item.value||'')}</textarea>
+    </div>`;
+  } else if (item.type === 'radio') {
+    const opts = (item.options || ['Ja','Nee','N/A']).map(o =>
+      `<div class="radio-opt${item.value===o?' active':''}" onclick="selectRadio('${secId}','${item.id}','${o}')">${escHtml(o)}</div>`
+    ).join('');
+    fieldHtml = `<div class="radio-row">${opts}</div>
+    <div style="margin-top:6px">
+      <input class="field" type="text" placeholder="Opties (komma gescheiden)" value="${escHtml((item.options||[]).join(', '))}"
+        onchange="updateRadioOptions('${secId}','${item.id}',this.value)" style="font-size:12px;">
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="checkbox${item.checked?' checked':''}" onclick="toggleCheck('${secId}','${item.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="item-body">
+      <input style="border:none;outline:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:14px;width:100%;color:var(--text);"
+        class="item-label${item.checked?' done':''}"
+        value="${escHtml(item.label)}" placeholder="Omschrijving…"
+        oninput="updateItemLabel('${secId}','${item.id}',this.value)">
+      ${item.hint ? `<div class="item-hint">${escHtml(item.hint)}</div>` : ''}
+      ${fieldHtml}
+    </div>
+    <button onclick="deleteItem('${secId}','${item.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;flex-shrink:0;" title="Verwijder">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  `;
+  return el;
+}
+
+// ── ACTIONS ──
+function toggleCheck(secId, itemId) {
+  const item = getItem(secId, itemId);
+  if (item) { item.checked = !item.checked; saveData(); render(); }
+}
+function updateItemLabel(secId, itemId, val) {
+  const item = getItem(secId, itemId); if (item) { item.label = val; saveData(); }
+}
+function updateItemValue(secId, itemId, val) {
+  const item = getItem(secId, itemId); if (item) { item.value = val; saveData(); }
+}
+function selectRadio(secId, itemId, val) {
+  const item = getItem(secId, itemId);
+  if (item) { item.value = val; item.checked = true; saveData(); render(); }
+}
+function updateRadioOptions(secId, itemId, val) {
+  const item = getItem(secId, itemId);
+  if (item) { item.options = val.split(',').map(s => s.trim()).filter(Boolean); saveData(); render(); }
+}
+function updateSectionTitle(secId, val) {
+  const sec = data.sections.find(s => s.id === secId);
+  if (sec) { sec.title = val; saveData(); }
+}
+function addSection() {
+  data.sections.push({ id: uid(), title: 'Nieuwe sectie', items: [
+    { id: uid(), label: 'Punt 1', hint: '', checked: false, type: 'check' }
+  ]});
+  saveData(); render();
+}
+function deleteSection(secId) {
+  if (!confirm('Sectie verwijderen?')) return;
+  data.sections = data.sections.filter(s => s.id !== secId);
+  saveData(); render();
+}
+function addItem(secId, type) {
+  const sec = data.sections.find(s => s.id === secId);
+  if (!sec) return;
+  const newItem = { id: uid(), label: 'Nieuw punt', hint: '', checked: false, type };
+  if (type === 'radio') newItem.options = ['Ja', 'Nee', 'N/A'];
+  if (type === 'text' || type === 'radio') newItem.value = '';
+  sec.items.push(newItem);
+  saveData(); render();
+}
+function deleteItem(secId, itemId) {
+  const sec = data.sections.find(s => s.id === secId);
+  if (!sec) return;
+  sec.items = sec.items.filter(i => i.id !== itemId);
+  saveData(); render();
+}
+function getItem(secId, itemId) {
+  const sec = data.sections.find(s => s.id === secId);
+  return sec ? sec.items.find(i => i.id === itemId) : null;
+}
+
+// ── PROGRESS ──
+function updateProgress() {
+  let total = 0, done = 0;
+  data.sections.forEach(sec => {
+    sec.items.forEach(item => {
+      total++;
+      if (item.checked) done++;
+    });
+  });
+  const pct = total ? Math.round((done/total)*100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('meta-count').textContent = done + ' van ' + total + ' items aangevinkt';
+}
+
+// ── PDF MODAL ──
+function openPdfModal() { document.getElementById('pdf-overlay').classList.add('open'); }
+function closePdfModal() { document.getElementById('pdf-overlay').classList.remove('open'); }
+
+// ── PDF GENERATION ──
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pw = 210, ph = 297;
+  const margin = 18, contentW = pw - margin * 2;
+  let y = margin;
+
+  const GREEN = [45, 90, 61];
+  const DARK = [26, 23, 20];
+  const MUTED = [120, 113, 104];
+  const LIGHT = [240, 237, 230];
+  const WHITE = [255, 255, 255];
+
+  // Header bar
+  doc.setFillColor(...GREEN);
+  doc.rect(0, 0, pw, 22, 'F');
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.title || 'Checklist', margin, 14);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const author = document.getElementById('pdf-author').value;
+  const org = document.getElementById('pdf-org').value;
+  const notes = document.getElementById('pdf-notes').value;
+  const dateStr = data.date ? new Date(data.date).toLocaleDateString('nl-BE', {day:'2-digit',month:'long',year:'numeric'}) : '';
+  let headerRight = dateStr;
+  if (org) headerRight = org + (dateStr ? '  ·  ' + dateStr : '');
+  doc.text(headerRight, pw - margin, 14, { align: 'right' });
+
+  y = 30;
+
+  // Meta info
+  if (author || notes) {
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    if (author) { doc.text('Opgesteld door: ' + author, margin, y); y += 5; }
+    if (notes) { doc.text('Opmerking: ' + notes, margin, y); y += 5; }
+    y += 2;
+  }
+
+  // Progress
+  let total = 0, done = 0;
+  data.sections.forEach(s => s.items.forEach(i => { total++; if (i.checked) done++; }));
+  const pct = total ? Math.round((done/total)*100) : 0;
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text(`Voortgang: ${done}/${total} punten aangevinkt (${pct}%)`, margin, y);
+  y += 4;
+  doc.setFillColor(...LIGHT);
+  doc.roundedRect(margin, y, contentW, 3, 1.5, 1.5, 'F');
+  doc.setFillColor(...GREEN);
+  doc.roundedRect(margin, y, contentW * pct / 100, 3, 1.5, 1.5, 'F');
+  y += 9;
+
+  // Sections
+  data.sections.forEach(sec => {
+    if (y > ph - 30) { doc.addPage(); y = margin; }
+
+    // Section header
+    doc.setFillColor(...LIGHT);
+    doc.roundedRect(margin, y, contentW, 8, 2, 2, 'F');
+    doc.setTextColor(...GREEN);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(sec.title, margin + 4, y + 5.5);
+    const secDone = sec.items.filter(i => i.checked).length;
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${secDone}/${sec.items.length}`, pw - margin - 2, y + 5.5, { align: 'right' });
+    y += 12;
+
+    sec.items.forEach(item => {
+      if (y > ph - 20) { doc.addPage(); y = margin; }
+
+      // Checkbox
+      doc.setDrawColor(...MUTED);
+      doc.setLineWidth(0.4);
+      if (item.checked) {
+        doc.setFillColor(...GREEN);
+        doc.roundedRect(margin, y - 3.5, 5, 5, 1, 1, 'F');
+        doc.setDrawColor(...WHITE);
+        doc.setLineWidth(0.8);
+        doc.line(margin + 1, y - 0.8, margin + 2.2, y + 0.6);
+        doc.line(margin + 2.2, y + 0.6, margin + 4, y - 1.8);
+      } else {
+        doc.setFillColor(...WHITE);
+        doc.setDrawColor(180, 174, 166);
+        doc.roundedRect(margin, y - 3.5, 5, 5, 1, 1, 'FD');
+      }
+
+      // Label
+      doc.setTextColor(item.checked ? 160 : DARK[0], item.checked ? 155 : DARK[1], item.checked ? 148 : DARK[2]);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', item.checked ? 'normal' : 'normal');
+      const labelLines = doc.splitTextToSize(item.label, contentW - 14);
+      doc.text(labelLines, margin + 8, y);
+      if (item.checked) {
+        doc.setDrawColor(180, 174, 166);
+        doc.setLineWidth(0.3);
+        labelLines.forEach((line, li) => {
+          const tw = doc.getTextWidth(line);
+          doc.line(margin + 8, y + li * 4.5 - 0.5, margin + 8 + tw, y + li * 4.5 - 0.5);
+        });
+      }
+      y += labelLines.length * 4.5;
+
+      // Value fields
+      if (item.type === 'text' && item.value) {
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        const valLines = doc.splitTextToSize('→ ' + item.value, contentW - 14);
+        valLines.forEach(line => {
+          if (y > ph - 15) { doc.addPage(); y = margin; }
+          doc.text(line, margin + 8, y);
+          y += 4.2;
+        });
+      }
+      if (item.type === 'radio' && item.value) {
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        doc.text('→ ' + item.value, margin + 8, y);
+        y += 4.2;
+      }
+      y += 2;
+    });
+    y += 4;
+  });
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFillColor(...LIGHT);
+    doc.rect(0, ph - 10, pw, 10, 'F');
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Gegenereerd op ' + new Date().toLocaleDateString('nl-BE'), margin, ph - 4);
+    doc.text(`Pagina ${i} / ${pageCount}`, pw - margin, ph - 4, { align: 'right' });
+  }
+
+  const filename = (data.title || 'checklist').replace(/\s+/g, '_').toLowerCase() + '.pdf';
+  doc.save(filename);
+  closePdfModal();
+}
+
+// ── UTILS ──
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INIT ──
+loadData();
+render();
+
+// Set today's date if empty
+if (!document.getElementById('form-date').value) {
+  document.getElementById('form-date').value = new Date().toISOString().split('T')[0];
+}
+</script>
+</body>
+</html>
